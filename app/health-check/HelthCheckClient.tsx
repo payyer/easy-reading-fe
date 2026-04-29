@@ -1,7 +1,6 @@
 "use client";
 
 import { useHealthCheck } from "@/app/hooks/useApi";
-import Link from "next/link";
 
 export function HealthCheckClient() {
   const { data, isLoading, isFetching, isError, isSuccess, error, refetch } =

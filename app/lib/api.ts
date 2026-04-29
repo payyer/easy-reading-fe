@@ -17,21 +17,22 @@ interface ApiResponse<T> {
 }
 
 /**
- * Execute an API request with built-in error handling and timeout
+ * Execute an API request with built-in error handling, timeout, and dynamic body parsing
  *
  * @param endpoint - API path (e.g., /health)
  * @param options - Request options (method, body, headers, timeout)
  * @returns Response with success flag and typed data
- *
- * @example
- * const data = await apiRequest('/api/health')
- * const user = await apiRequest('/api/user', { method: 'POST', body: {...} })
  */
 export async function apiRequest<T = any>(
   endpoint: string,
   options: ApiRequestOptions = {}
 ): Promise<ApiResponse<T>> {
-  const { timeout = 10000, ...fetchOptions } = options;
+  const {
+    timeout = 10000,
+    body,
+    headers: customHeaders,
+    ...fetchOptions
+  } = options;
 
   const url = `${API_BASE_URL}${endpoint}`;
 
@@ -40,15 +41,30 @@ export async function apiRequest<T = any>(
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-    // Merge headers
-    const headers = {
-      "Content-Type": "application/json",
-      ...fetchOptions.headers,
+    // Kiểm tra nếu body là FormData (dùng để upload file)
+    const isFormData = body instanceof FormData;
+
+    // Khởi tạo headers
+    const headers: Record<string, string> = {
+      ...(customHeaders as Record<string, string>),
     };
+
+    // Nếu KHÔNG PHẢI FormData và chưa có Content-Type thì mặc định là JSON
+    if (!isFormData && !headers["Content-Type"]) {
+      headers["Content-Type"] = "application/json";
+    }
+
+    // Xử lý body: Nếu là FormData thì giữ nguyên, nếu là object thì stringify
+    const finalBody = isFormData
+      ? body
+      : body
+      ? JSON.stringify(body)
+      : undefined;
 
     const response = await fetch(url, {
       ...fetchOptions,
       headers,
+      body: finalBody,
       signal: controller.signal,
     });
 
@@ -102,9 +118,6 @@ export async function apiRequest<T = any>(
   }
 }
 
-/**
- * GET request
- */
 export function apiGet<T = any>(
   endpoint: string,
   options?: Omit<ApiRequestOptions, "method">
@@ -120,7 +133,7 @@ export function apiPost<T = any>(
   return apiRequest<T>(endpoint, {
     ...options,
     method: "POST",
-    body: body ? JSON.stringify(body) : undefined,
+    body,
   });
 }
 
@@ -132,7 +145,7 @@ export function apiPut<T = any>(
   return apiRequest<T>(endpoint, {
     ...options,
     method: "PUT",
-    body: body ? JSON.stringify(body) : undefined,
+    body,
   });
 }
 

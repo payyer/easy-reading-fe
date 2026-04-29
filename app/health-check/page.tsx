@@ -1,4 +1,4 @@
-import { HealthCheckClient } from "./health-check-client";
+import { HealthCheckClient } from "./HelthCheckClient";
 
 export default function HealthCheckPage() {
   return (
